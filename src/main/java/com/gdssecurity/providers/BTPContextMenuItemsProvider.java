@@ -26,6 +26,8 @@ import com.gdssecurity.helpers.BTPConstants;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -74,7 +76,54 @@ public class BTPContextMenuItemsProvider implements ContextMenuItemsProvider {
             this.sendSelectionToBTP(selection);
         });
         menuItems.add(sendToBTP);
+
+        ActionListener checkBoxListener = new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                JCheckBoxMenuItem selectedMenuItem = (JCheckBoxMenuItem) e.getSource();
+                String optionText = selectedMenuItem.getText();
+
+                _montoya.persistence().extensionData().setBoolean(optionText, selectedMenuItem.isSelected());
+
+                if (selectedMenuItem.isSelected()) {
+                    _logging.logToOutput(optionText + " is selected.");
+                } else {
+                    _logging.logToOutput(optionText + " is unselected.");
+                }
+            }
+        };
+
+        JMenu downGradeOptions = new JMenu();
+        downGradeOptions.setText("Downgrade Options");
+
+        JCheckBoxMenuItem webSocketsText = new JCheckBoxMenuItem("WebSockets: Text", getBoolean(_montoya,"WebSockets: Text", false));
+        webSocketsText.addActionListener(checkBoxListener);
+        downGradeOptions.add(webSocketsText);
+
+        JCheckBoxMenuItem webSocketsBinary = new JCheckBoxMenuItem("WebSockets: Binary", getBoolean(_montoya,"WebSockets: Binary", false));
+        webSocketsBinary.addActionListener(checkBoxListener);
+        downGradeOptions.add(webSocketsBinary);
+
+        JCheckBoxMenuItem serverSentEventsText = new JCheckBoxMenuItem("ServerSentEvents: Text", getBoolean(_montoya,"ServerSentEvents: Text", true));
+        serverSentEventsText.addActionListener(checkBoxListener);
+        downGradeOptions.add(serverSentEventsText);
+
+        JCheckBoxMenuItem longPollingText = new JCheckBoxMenuItem("LongPolling: Text", getBoolean(_montoya,"LongPolling: Text", true));
+        longPollingText.addActionListener(checkBoxListener);
+        downGradeOptions.add(longPollingText);
+
+        JCheckBoxMenuItem longPollingBinary = new JCheckBoxMenuItem("LongPolling: Binary", getBoolean(_montoya,"LongPolling: Binary", true));
+        longPollingBinary.addActionListener(checkBoxListener);
+        downGradeOptions.add(longPollingBinary);
+
+        menuItems.add(downGradeOptions);
+
         return menuItems;
+    }
+
+    public static boolean getBoolean(MontoyaApi montoya, String key, boolean defaultValue) {
+        Boolean returnValue = montoya.persistence().extensionData().getBoolean(key);
+        if (returnValue == null) return defaultValue;
+        return returnValue;
     }
 
     /**
