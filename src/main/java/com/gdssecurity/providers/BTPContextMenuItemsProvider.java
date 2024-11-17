@@ -25,9 +25,13 @@ import com.gdssecurity.views.BTPView;
 import com.gdssecurity.helpers.BTPConstants;
 
 import javax.swing.*;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -77,6 +81,28 @@ public class BTPContextMenuItemsProvider implements ContextMenuItemsProvider {
         });
         menuItems.add(sendToBTP);
 
+        JMenuItem downGradeOptions = new JMenuItem();
+        downGradeOptions.setText("Downgrade Options");
+        downGradeOptions.addActionListener(e -> {
+            showCheckBoxDialog();
+        });
+        menuItems.add(downGradeOptions);
+
+        return menuItems;
+    }
+
+    public void showCheckBoxDialog() {
+        // Create a new JDialog
+        JDialog dialog = new JDialog((JFrame) null, "Select Options", true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(300, 200);
+
+        // Create a panel to hold checkboxes
+        JPanel checkBoxPanel = new JPanel();
+        checkBoxPanel.setLayout(new BoxLayout(checkBoxPanel, BoxLayout.Y_AXIS));
+
+        //actionlistener for checkboxes
         ActionListener checkBoxListener = new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 JCheckBoxMenuItem selectedMenuItem = (JCheckBoxMenuItem) e.getSource();
@@ -92,32 +118,16 @@ public class BTPContextMenuItemsProvider implements ContextMenuItemsProvider {
             }
         };
 
-        JMenu downGradeOptions = new JMenu();
-        downGradeOptions.setText("Downgrade Options");
+        for (String option : List.of("WebSockets: Text", "WebSockets: Binary",
+                "ServerSentEvents: Text", "LongPolling: Text", "LongPolling: Binary")) {
+            JCheckBoxMenuItem checkBoxMenuItem = new JCheckBoxMenuItem(option, getBoolean(_montoya, option, false));
+            checkBoxMenuItem.addActionListener(checkBoxListener);
 
-        JCheckBoxMenuItem webSocketsText = new JCheckBoxMenuItem("WebSockets: Text", getBoolean(_montoya,"WebSockets: Text", false));
-        webSocketsText.addActionListener(checkBoxListener);
-        downGradeOptions.add(webSocketsText);
+            checkBoxPanel.add(checkBoxMenuItem);
+        }
 
-        JCheckBoxMenuItem webSocketsBinary = new JCheckBoxMenuItem("WebSockets: Binary", getBoolean(_montoya,"WebSockets: Binary", false));
-        webSocketsBinary.addActionListener(checkBoxListener);
-        downGradeOptions.add(webSocketsBinary);
-
-        JCheckBoxMenuItem serverSentEventsText = new JCheckBoxMenuItem("ServerSentEvents: Text", getBoolean(_montoya,"ServerSentEvents: Text", true));
-        serverSentEventsText.addActionListener(checkBoxListener);
-        downGradeOptions.add(serverSentEventsText);
-
-        JCheckBoxMenuItem longPollingText = new JCheckBoxMenuItem("LongPolling: Text", getBoolean(_montoya,"LongPolling: Text", true));
-        longPollingText.addActionListener(checkBoxListener);
-        downGradeOptions.add(longPollingText);
-
-        JCheckBoxMenuItem longPollingBinary = new JCheckBoxMenuItem("LongPolling: Binary", getBoolean(_montoya,"LongPolling: Binary", true));
-        longPollingBinary.addActionListener(checkBoxListener);
-        downGradeOptions.add(longPollingBinary);
-
-        menuItems.add(downGradeOptions);
-
-        return menuItems;
+        dialog.add(checkBoxPanel);
+        dialog.setVisible(true);
     }
 
     public static boolean getBoolean(MontoyaApi montoya, String key, boolean defaultValue) {
