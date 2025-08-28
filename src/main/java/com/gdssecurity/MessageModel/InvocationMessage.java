@@ -27,7 +27,7 @@ import org.msgpack.core.MessageUnpacker;
 import org.msgpack.value.ImmutableValue;
 import org.msgpack.value.ValueType;
 
-import javax.xml.bind.DatatypeConverter;
+import java.util.HexFormat;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -158,7 +158,7 @@ public class InvocationMessage extends GenericMessage {
                     JSONObject binaryObj = arguments.getJSONObject(i);
                     int binaryHeader = binaryObj.getInt("BinaryHeader");
                     buffPacker.packBinaryHeader(binaryHeader);
-                    byte[] binaryBytes = DatatypeConverter.parseHexBinary(binaryObj.getString("BinaryBytes"));
+                    byte[] binaryBytes = HexFormat.of().parseHex(binaryObj.getString("BinaryBytes"));
                     buffPacker.writePayload(binaryBytes);
                     break;
                 default:
