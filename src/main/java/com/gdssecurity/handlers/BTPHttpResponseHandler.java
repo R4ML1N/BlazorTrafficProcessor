@@ -24,6 +24,7 @@ import burp.api.montoya.proxy.http.ProxyResponseHandler;
 import burp.api.montoya.proxy.http.ProxyResponseReceivedAction;
 import burp.api.montoya.proxy.http.ProxyResponseToBeSentAction;
 import com.gdssecurity.helpers.BTPConstants;
+import com.gdssecurity.providers.BTPContextMenuItemsProvider;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -89,7 +90,49 @@ public class BTPHttpResponseHandler implements ProxyResponseHandler {
                     return ProxyResponseReceivedAction.continueWith(interceptedResponse);
                 } else {
                     body.remove("availableTransports");
-                    body.put("availableTransports", this.modifiedTransports);
+
+                    modifiedTransports = new JSONArray();
+                    boolean wsText = BTPContextMenuItemsProvider.getBoolean(_montoya, "WebSockets: Text", false);
+                    boolean wsBinary = BTPContextMenuItemsProvider.getBoolean(_montoya, "WebSockets: Binary", false);
+                    boolean ssText = BTPContextMenuItemsProvider.getBoolean(_montoya, "ServerSentEvents: Text", true);
+                    boolean lpText = BTPContextMenuItemsProvider.getBoolean(_montoya, "LongPolling: Text", true);
+                    boolean lpBinary = BTPContextMenuItemsProvider.getBoolean(_montoya, "LongPolling: Binary", true);
+
+                    if (wsText||wsBinary) {
+                        JSONObject ws = new JSONObject();
+                        ws.append("transport", "WebSockets");
+                        JSONArray formats = new JSONArray();
+                        if (wsText) {
+                            formats.put("Text");
+                        }
+                        if (wsBinary) {
+                            formats.put("Binary");
+                        }
+                        ws.put("transferFormats", formats);
+                        modifiedTransports.put(ws);
+                    }
+                    if (ssText) {
+                        JSONObject ss = new JSONObject();
+                        ss.append("transport", "ServerSentEvents");
+                        JSONArray formats = new JSONArray();
+                        formats.put("Text");
+                        ss.put("TransferFormats", formats);
+                        modifiedTransports.put(ss);
+                    }
+                    if (lpText||lpBinary) {
+                        JSONObject lp = new JSONObject();
+                        lp.append("transport", "LongPolling");
+                        JSONArray formats = new JSONArray();
+                        if (lpText) {
+                            formats.put("Text");
+                        }
+                        if (lpBinary) {
+                            formats.put("Binary");
+                        }
+                        lp.put("transferFormats", formats);
+                        modifiedTransports.put(lp);
+                    }
+                    body.put("availableTransports", modifiedTransports);
                     return ProxyResponseReceivedAction.continueWith(interceptedResponse.withBody(body.toString()));
                 }
             }

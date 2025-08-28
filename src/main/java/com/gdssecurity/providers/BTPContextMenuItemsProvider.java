@@ -27,7 +27,13 @@ import com.gdssecurity.helpers.BlazorHelper;
 import com.gdssecurity.views.BTPView;
 
 import javax.swing.*;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -76,7 +82,60 @@ public class BTPContextMenuItemsProvider implements ContextMenuItemsProvider {
             this.sendSelectionToBTP(selection);
         });
         menuItems.add(sendToBTP);
+
+        JMenuItem downGradeOptions = new JMenuItem();
+        downGradeOptions.setText("Downgrade Options");
+        downGradeOptions.addActionListener(e -> {
+            showCheckBoxDialog();
+        });
+        menuItems.add(downGradeOptions);
+
         return menuItems;
+    }
+
+    public void showCheckBoxDialog() {
+        // Create a new JDialog
+        JDialog dialog = new JDialog((JFrame) null, "Select Options", true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(300, 200);
+
+        // Create a panel to hold checkboxes
+        JPanel checkBoxPanel = new JPanel();
+        checkBoxPanel.setLayout(new BoxLayout(checkBoxPanel, BoxLayout.Y_AXIS));
+
+        //actionlistener for checkboxes
+        ActionListener checkBoxListener = new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                JCheckBoxMenuItem selectedMenuItem = (JCheckBoxMenuItem) e.getSource();
+                String optionText = selectedMenuItem.getText();
+
+                _montoya.persistence().extensionData().setBoolean(optionText, selectedMenuItem.isSelected());
+
+                if (selectedMenuItem.isSelected()) {
+                    _logging.logToOutput(optionText + " is selected.");
+                } else {
+                    _logging.logToOutput(optionText + " is unselected.");
+                }
+            }
+        };
+
+        for (String option : List.of("WebSockets: Text", "WebSockets: Binary",
+                "ServerSentEvents: Text", "LongPolling: Text", "LongPolling: Binary")) {
+            JCheckBoxMenuItem checkBoxMenuItem = new JCheckBoxMenuItem(option, getBoolean(_montoya, option, false));
+            checkBoxMenuItem.addActionListener(checkBoxListener);
+
+            checkBoxPanel.add(checkBoxMenuItem);
+        }
+
+        dialog.add(checkBoxPanel);
+        dialog.setVisible(true);
+    }
+
+    public static boolean getBoolean(MontoyaApi montoya, String key, boolean defaultValue) {
+        Boolean returnValue = montoya.persistence().extensionData().getBoolean(key);
+        if (returnValue == null) return defaultValue;
+        return returnValue;
     }
 
     /**
