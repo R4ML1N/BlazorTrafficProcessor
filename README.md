@@ -170,9 +170,8 @@ Deserialized:
 #### Contributors
 
 SignalR header support added by [@R4ML1N](https://github.com/R4ML1N)
-
 WebSocket support has been added by Soroush Dalili [@irsdl](https://github.com/irsdl)
-
+Added Fixes and Improvements by [@R4ML1N](https://github.com/R4ML1N)
 
 #### Copyright
 
