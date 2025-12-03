@@ -31,6 +31,15 @@ All notable changes to the Blazor Traffic Processor (BTP) extension will be docu
   - **BlazorHelper.blazorUnpack**: Improved error handling when `initializeMessage()` returns null
   - Now handles malformed Blazor data (e.g., unterminated strings) gracefully with error messages
   - Prevents extension crashes and provides meaningful error feedback instead of null pointer exceptions
+- **Scope Check Error Fix**: Fixed `IllegalArgumentException` when checking if URL is in scope with empty scope or invalid URLs
+  - **BTPHttpRequestEditor.isEnabledFor()**: Added comprehensive validation before scope checking
+    - Validates scope object is not null before use
+    - Validates URL is not null or blank before passing to `isInScope()`
+    - Wraps `isInScope()` call in try-catch to handle `IllegalArgumentException`
+    - Stores URL in variable to avoid multiple method calls
+  - **BTPHttpResponseEditor.isEnabledFor()**: Applied same validation improvements
+  - Prevents crashes when no URLs are added to Burp's scope or when URL is invalid/blank
+  - Editors gracefully return `false` instead of throwing exceptions, preventing extension errors
 
 ### Technical Improvements
 - **BTPHttpRequestEditor**: 

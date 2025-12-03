@@ -151,14 +151,6 @@ public class BTPHttpRequestEditor implements ExtensionProvidedHttpRequestEditor 
             return false;
         }
 
-        if (requestResponse.request().url() == null) {
-            return false;
-        }
-
-        if (!this._montoya.scope().isInScope(requestResponse.request().url())) {
-            return false;
-        }
-
         if (requestResponse.request().contentType() == ContentType.JSON) {
             return false;
         }
@@ -167,6 +159,26 @@ public class BTPHttpRequestEditor implements ExtensionProvidedHttpRequestEditor 
             if (!requestResponse.request().hasHeader(BTPConstants.SIGNALR_HEADER)) {
                 return false;
             }
+        }
+
+        // Check scope exists
+        if (this._montoya.scope() == null) {
+            return false;
+        }
+
+        // Check URL is not blank
+        String url = requestResponse.request().url(); 
+        if (url == null || url.isBlank()) {
+            return false;
+        }
+
+        try {
+            // Check if URL is in scope
+            if (!this._montoya.scope().isInScope(url)) {
+                return false;
+            }
+        } catch (IllegalArgumentException e) {
+            return false;
         }
 
         if (requestResponse.request().body() == null || requestResponse.request().body().length() == 0) {

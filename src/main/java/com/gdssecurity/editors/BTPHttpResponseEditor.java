@@ -116,11 +116,6 @@ public class BTPHttpResponseEditor implements ExtensionProvidedHttpResponseEdito
             return false;
         }
 
-        // Check scope exists
-        if (this._montoya.scope() == null) {
-            return false;
-        }
-
         // Check if it's a Blazor request or has SignalR header
         if (!requestResponse.request().url().contains(BTPConstants.BLAZOR_URL)) {
             if (!requestResponse.request().hasHeader(BTPConstants.SIGNALR_HEADER)) {
@@ -128,8 +123,23 @@ public class BTPHttpResponseEditor implements ExtensionProvidedHttpResponseEdito
             }
         }
 
-        // Check if in scope
-        if (!this._montoya.scope().isInScope(requestResponse.request().url())) {
+        // Check scope exists
+        if (this._montoya.scope() == null) {
+            return false;
+        }
+
+        // Check URL is not blank
+        String url = requestResponse.request().url(); 
+        if (url == null || url.isBlank()) {
+            return false;
+        }
+
+        try {
+            // Check if URL is in scope
+            if (!this._montoya.scope().isInScope(url)) {
+                return false;
+            }
+        } catch (IllegalArgumentException e) {
             return false;
         }
 
