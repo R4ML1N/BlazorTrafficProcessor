@@ -8,7 +8,7 @@ on:
     branches:
       - main
 
-# Explicit permissions (needed for releases/tags)
+# Explicit permissions for releases/tags
 permissions:
   contents: write
   packages: read
@@ -32,17 +32,15 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build with Gradle
-        run: ./gradlew build
+      # Build the same fat JAR that Docker builds (shadowJar to ./releases/)
+      - name: Build fat JAR with Shadow
+        run: ./gradlew clean shadowJar
 
-      - name: Creating the jar file
-        run: ./gradlew jar
-
-      # Use the real Gradle output path
+      # Upload the fat JAR as an artifact
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          path: build/libs/*.jar
+          path: ./releases/*.jar
           name: Downloadable Extension File
 
       # Decide prefix depending on the branch
@@ -57,7 +55,7 @@ jobs:
           echo "PREFIX=$PREFIX" >> $GITHUB_ENV
           echo "prefix=$PREFIX" >> $GITHUB_OUTPUT
 
-      # Read version from build.gradle
+      # Extract version from build.gradle
       - name: Extract new version from Gradle
         id: version
         run: |
@@ -73,7 +71,7 @@ jobs:
           echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
           echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
-      # Look for the latest previous release with the same prefix
+      # Find the latest previous release with the same prefix
       - name: Find previous release with same prefix
         id: previous
         run: |
@@ -95,12 +93,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Optionally delete previous release + tag if it exists
+      # Delete previous release + tag if one exists
       - name: Delete previous release and tag
         if: env.PREVIOUS_TAG != ''
         run: |
           echo "Deleting previous release: $PREVIOUS_TAG"
-          # Delete GitHub Release
+
+          # Delete GitHub Release (if it exists)
           gh release delete "$PREVIOUS_TAG" -y || true
 
           # Delete local tag if present
@@ -112,10 +111,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PREVIOUS_TAG: ${{ env.PREVIOUS_TAG }}
 
-      # Create new release and attach the JAR
+      # Create new release and attach the fat JAR from ./releases/
       - name: Create Release using GitHub CLI
         run: |
-          gh release create "$RELEASE_TAG" build/libs/*.jar \
+          gh release create "$RELEASE_TAG" ./releases/*.jar \
             --title "Release $RELEASE_TAG" \
             --notes "This jar file has been built by GitHub automatically." \
             --repo "$GITHUB_REPOSITORY"
