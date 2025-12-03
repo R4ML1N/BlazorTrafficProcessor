@@ -17,6 +17,7 @@ package com.gdssecurity.views;
 
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.core.ByteArray;
+import burp.api.montoya.core.HighlightColor;
 import burp.api.montoya.logging.Logging;
 import burp.api.montoya.ui.editor.RawEditor;
 import com.gdssecurity.MessageModel.GenericMessage;
@@ -38,12 +39,14 @@ public class BTPView extends JComponent {
     private JPanel topLevel;
     private JPanel mainView;
     private JPanel buttonView;
+    private JPanel optionsView;
     private RawEditor editor;
     private RawEditor results;
     private JButton convertButton;
     private JButton clearButton;
     private String buttonText;
     private JComboBox<String> dropDownMenu;
+    private JComboBox<HighlightColor> highlightColorMenu;
     private BlazorHelper blazorHelper;
     private JCheckBox useWebSocketCheckBox;
     private final int DESERIALIZE_IDX = 0;
@@ -63,8 +66,26 @@ public class BTPView extends JComponent {
         this.topLevel.setLayout(new BorderLayout(10, 10));
         this.mainView = new JPanel();
         this.mainView.setLayout(new GridLayout(1, 2));
+        
+        // Create a horizontal panel for buttons and options
+        JPanel topControlsPanel = new JPanel();
+        topControlsPanel.setLayout(new BorderLayout(5, 0));
+        
         this.buttonView = new JPanel();
         this.buttonView.setLayout(new GridLayout(1, 3));
+        
+        // Create a panel for options with a title
+        JPanel optionsContainer = new JPanel();
+        optionsContainer.setLayout(new BorderLayout(5, 5));
+        
+        JLabel settingsLabel = new JLabel("Settings");
+        settingsLabel.setFont(settingsLabel.getFont().deriveFont(Font.BOLD, 14f));
+        settingsLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
+        optionsContainer.add(settingsLabel, BorderLayout.NORTH);
+        
+        this.optionsView = new JPanel();
+        this.optionsView.setLayout(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        optionsContainer.add(this.optionsView, BorderLayout.CENTER);
 
         // Editor, where the user input goes
         this.editor = this._montoya.userInterface().createRawEditor();
@@ -98,6 +119,41 @@ public class BTPView extends JComponent {
         });
         this.buttonView.add(this.clearButton);
 
+        // Highlight Color Selection
+        JLabel highlightLabel = new JLabel("Highlight Color:");
+        this.optionsView.add(highlightLabel);
+        
+        HighlightColor[] highlightColors = {
+            HighlightColor.CYAN, HighlightColor.BLUE, HighlightColor.GREEN, 
+            HighlightColor.YELLOW, HighlightColor.ORANGE, HighlightColor.RED, 
+            HighlightColor.PINK, HighlightColor.MAGENTA, HighlightColor.GRAY
+        };
+        
+        this.highlightColorMenu = new JComboBox<HighlightColor>(highlightColors);
+        
+        // Load saved highlight color preference
+        String savedColor = this._montoya.persistence().preferences().getString("blazor_highlight_color");
+        if (savedColor != null) {
+            try {
+                HighlightColor savedHighlightColor = HighlightColor.valueOf(savedColor);
+                this.highlightColorMenu.setSelectedItem(savedHighlightColor);
+            } catch (IllegalArgumentException e) {
+                // Default to CYAN if saved color is invalid
+                this.highlightColorMenu.setSelectedItem(HighlightColor.CYAN);
+            }
+        } else {
+            // Default to CYAN
+            this.highlightColorMenu.setSelectedItem(HighlightColor.CYAN);
+        }
+        
+        this.highlightColorMenu.addActionListener(e -> {
+            HighlightColor selectedColor = (HighlightColor) this.highlightColorMenu.getSelectedItem();
+            if (selectedColor != null) {
+                this._montoya.persistence().preferences().setString("blazor_highlight_color", selectedColor.name());
+            }
+        });
+        this.optionsView.add(this.highlightColorMenu);
+
         this.useWebSocketCheckBox = new JCheckBox("Use WebSocket");
         Boolean useWebSocket = this._montoya.persistence().preferences().getBoolean("use_websocket");
         if(useWebSocket == null)
@@ -106,12 +162,18 @@ public class BTPView extends JComponent {
         this.useWebSocketCheckBox.addActionListener(e -> {
             this._montoya.persistence().preferences().setBoolean("use_websocket", this.useWebSocketCheckBox.isSelected());
         });
-        this.buttonView.add(this.useWebSocketCheckBox);
+        this.optionsView.add(this.useWebSocketCheckBox);
 
-        // Add the button view to main UI component
-        this.topLevel.add(this.buttonView, BorderLayout.NORTH);
+        // Add button view to the left side of top controls
+        topControlsPanel.add(this.buttonView, BorderLayout.WEST);
+        
+        // Add options view to the right side of top controls
+        topControlsPanel.add(optionsContainer, BorderLayout.EAST);
 
-        // Add the main pane to the view
+        // Add the top controls panel to the top of the main UI
+        this.topLevel.add(topControlsPanel, BorderLayout.NORTH);
+
+        // Add the main view (editor and results) to the center with proper space
         this.topLevel.add(mainView, BorderLayout.CENTER);
         add(this.topLevel);
     }

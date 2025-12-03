@@ -25,7 +25,7 @@ import burp.api.montoya.proxy.http.ProxyRequestToBeSentAction;
 import com.gdssecurity.helpers.BTPConstants;
 
 /**
- * Class to handle highlighting requests that use BlazorPack
+ * Class to handle the highlighting of Blazor traffic in HTTP requests
  */
 public class BTPHttpRequestHandler implements ProxyRequestHandler {
 
@@ -33,7 +33,7 @@ public class BTPHttpRequestHandler implements ProxyRequestHandler {
     private Logging _logging;
 
     /**
-     * Constructor for the request handler object
+     * Constructor for the BTPHttpRequestHandler object
      * @param montoyaApi - an instance of the Burp Montoya APIs
      */
     public BTPHttpRequestHandler(MontoyaApi montoyaApi) {
@@ -42,30 +42,55 @@ public class BTPHttpRequestHandler implements ProxyRequestHandler {
     }
 
     /**
-     * Handle the highlighting of requests when they are received
-     * Note: only used for highlighting, no processing logic present
-     * @param interceptedRequest - An object holding the captured HTTP request
-     * @return - the intercepted request with an added highlight for requests that use BlazorPack
+     * Handles the highlighting by listening for matching HTTP requests and auto-highlighting them
+     * @param interceptedRequest - An object containing the intercepted HTTP request
+     * @return the request object with highlighting applied if applicable, otherwise just let the request go through un-touched
      */
     @Override
     public ProxyRequestReceivedAction handleRequestReceived(InterceptedRequest interceptedRequest) {
+        // Highlight Blazor traffic
         if (interceptedRequest.body().length() != 0 && interceptedRequest.path().contains("_blazor?id")) {
-            interceptedRequest.annotations().setHighlightColor(HighlightColor.CYAN);
+            HighlightColor highlightColor = getHighlightColor();
+            interceptedRequest.annotations().setHighlightColor(highlightColor);
         }
+        // Highlight Blazor Traffic via SignalR Header
         if (interceptedRequest.hasHeader(BTPConstants.SIGNALR_HEADER)) {
-            interceptedRequest.annotations().setHighlightColor(HighlightColor.CYAN);
+            HighlightColor highlightColor = getHighlightColor();
+            interceptedRequest.annotations().setHighlightColor(highlightColor);
         }
+        // Highlight Blazor negotiation requests
+        if (interceptedRequest.url().contains(BTPConstants.NEGOTIATE_URL)) {
+            HighlightColor highlightColor = getHighlightColor();
+            interceptedRequest.annotations().setHighlightColor(highlightColor);
+        }
+
         return ProxyRequestReceivedAction.continueWith(interceptedRequest);
     }
 
     /**
-     * Handle the request after it is received, before sent back to the client
-     * Note: not utilized for this handler
+     * Handles the logic for after a request has been processed
+     * Just forward along the un-touched request since it was already modified by handleRequestReceived
      * @param interceptedRequest - An object holding the HTTP request right before it is sent
-     * @return - an un-modified request
+     * @return the un-touched request object
      */
     @Override
     public ProxyRequestToBeSentAction handleRequestToBeSent(InterceptedRequest interceptedRequest) {
         return ProxyRequestToBeSentAction.continueWith(interceptedRequest);
+    }
+
+    /**
+     * Gets the user-selected highlight color from preferences, defaults to CYAN if not set
+     * @return the HighlightColor to use for highlighting Blazor traffic
+     */
+    private HighlightColor getHighlightColor() {
+        try {
+            String savedColor = this._montoya.persistence().preferences().getString("blazor_highlight_color");
+            if (savedColor != null) {
+                return HighlightColor.valueOf(savedColor);
+            }
+        } catch (IllegalArgumentException e) {
+            this._logging.logToError("[-] Invalid highlight color preference, using default CYAN: " + e.getMessage());
+        }
+        return HighlightColor.CYAN; // Default fallback
     }
 }

@@ -47,9 +47,9 @@ public class BTPWebSocketEditor implements ExtensionProvidedWebSocketMessageEdit
         } else {
             body = this.webSocketMessage.payload().getBytes();
         }
-        if (body == null | body.length == 0) {
+        if (body == null || body.length == 0) {
             this.logging.logToError("[-] getMessage: The selected editor body is empty/null.");
-            return null;
+            return this.webSocketMessage.payload(); // Return original payload instead of null
         }
         JSONArray messages;
         byte[] newBody;
@@ -57,11 +57,14 @@ public class BTPWebSocketEditor implements ExtensionProvidedWebSocketMessageEdit
             messages = new JSONArray(new String(body,StandardCharsets.UTF_8));
             newBody = this.blazorHelper.blazorPack(messages);
         } catch (JSONException e) {
-            this.logging.logToError("[-] getMessage - JSONExcpetion while parsing JSON array: " + e.getMessage());
-            return null;
+            this.logging.logToError("[-] getMessage - JSONException while parsing JSON array: " + e.getMessage());
+            // Return error message as ByteArray instead of null
+            String errorMsg = "ERROR: Invalid JSON format - " + e.getMessage();
+            return ByteArray.byteArray(errorMsg.getBytes());
         } catch (Exception e) {
             this.logging.logToError("[-] getMessage - Unexpected exception while getting the request: " + e.getMessage());
-            return null;
+            String errorMsg = "ERROR: Unexpected error - " + e.getMessage();
+            return ByteArray.byteArray(errorMsg.getBytes());
         }
         return ByteArray.byteArray(newBody);
     }
@@ -76,18 +79,30 @@ public class BTPWebSocketEditor implements ExtensionProvidedWebSocketMessageEdit
         this.webSocketMessage = message;
         byte[] body = webSocketMessage.payload().getBytes();
         ArrayList<GenericMessage> messages = this.blazorHelper.blazorUnpack(body);
+        if (messages == null) {
+            this.logging.logToError("[-] setMessage - blazorUnpack returned null");
+            String errorMsg = "ERROR: Failed to deserialize Blazor data - blazorUnpack returned null";
+            this.editor.setContents(ByteArray.byteArray(errorMsg));
+            return;
+        }
         ByteArrayOutputStream outstream = new ByteArrayOutputStream();
         try {
             String jsonStrMessages = this.blazorHelper.messageArrayToString(messages);
             outstream.write(jsonStrMessages.getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
-            this.logging.logToError("[-] setRequestResponse - IOException while writing bytes to buffer: " + e.getMessage());
+            this.logging.logToError("[-] setMessage - IOException while writing bytes to buffer: " + e.getMessage());
+            String errorMsg = "ERROR: IOException while converting Blazor to JSON - " + e.getMessage();
+            this.editor.setContents(ByteArray.byteArray(errorMsg));
             return;
         } catch (JSONException e) {
-            this.logging.logToError("[-] setRequestResponse - JSONException while parsing JSON array: " + e.getMessage());
+            this.logging.logToError("[-] setMessage - JSONException while parsing JSON array: " + e.getMessage());
+            String errorMsg = "ERROR: Failed to deserialize Blazor data - " + e.getMessage();
+            this.editor.setContents(ByteArray.byteArray(errorMsg));
             return;
         } catch (Exception e) {
-            this.logging.logToError("[-] setRequestResponse - Unexpected exception: " + e.getMessage());
+            this.logging.logToError("[-] setMessage - Unexpected exception: " + e.getMessage());
+            String errorMsg = "ERROR: Failed to deserialize Blazor data - " + e.getMessage();
+            this.editor.setContents(ByteArray.byteArray(errorMsg));
             return;
         }
         this.editor.setContents(ByteArray.byteArray(outstream.toByteArray()));

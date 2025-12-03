@@ -4,16 +4,13 @@ A BurpSuite extension to aid pentesting web applications that use Blazor Server/
 ## Build
 
 ### Prerequisites
-- Install [Java 19](https://www.oracle.com/java/technologies/javase/jdk19-archive-downloads.html) on your building machine.
-- Install [Gradle](https://gradle.org/install/) on your building machine.
-- Ensure the `JAVA_HOME` environment variable is set to the JDK 19 path if you have multiple versions of Java installed.
-    - _NOTE: This project requires Java 17+._
+- Docker or Podman
 
 ### Build Steps
-1. Clone the repository with `git clone https://github.com/AonCyberLabs/BlazorTrafficProcessor`
+1. Clone the repository.
 2. `cd BlazorTrafficProcessor`
-3. `gradle build`
-4. The built JAR file will be located at `./build/libs/` or `./releases/`
+3. `podman run --rm -v "$PWD/out:/host" burp-ext-build sh -c 'cp /out/*.jar /host/'`
+4. The built JAR file will be located at `./out/`
 
 Note: The latest build should be automatically compiled by GitHub workflows (Actions)
 
@@ -21,16 +18,16 @@ Note: The latest build should be automatically compiled by GitHub workflows (Act
 
 ### Installing the extension in Burp 
 * Download the latest `.jar` from the Releases page or build the project manually.
-  * _The project has been submitted to the BApp store and is pending review_.
 * Load the extension into Burp
   1. Click "Extender"
   2. Under "Extensions", click "Add"
   3. In the file selector, choose the downloaded/built `.jar` file
+  4. **ENSURE** you add the application to Burp **SCOPE**! Othewise the extension won't add the BTP tab to the requests and responses.
 
 **NOTE: it is recommended to check "Other Binary" in your Burp History filter, this will allow you to see data returned by the application.**
 
 ### Using the Extension
-* All BlazorPack-enabled requests or responses will be highlighted as Cyan within the "Http History" tab in Burpsuite.
+* All BlazorPack-enabled requests or responses will be highlighted by default with the color Cyan within the "Http History" tab in Burpsuite. The color can be changed in the BTP Extension Tab.
 * The "BTP" request/response editor tab, which appears on each in-scope request or response that contains BlazorPack messages. 
   * Clicking on this tab will convert the serialized data from BlazorPack to JSON.
   * After editing the JSON (either in Intercept or Repeater), click the "Raw" tab to re-serialize with your payloads

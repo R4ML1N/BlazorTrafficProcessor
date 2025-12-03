@@ -22,7 +22,7 @@ import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.logging.Logging;
 import burp.api.montoya.ui.Selection;
-import burp.api.montoya.ui.editor.RawEditor;
+import burp.api.montoya.ui.editor.HttpRequestEditor;
 import burp.api.montoya.ui.editor.extension.EditorMode;
 import burp.api.montoya.ui.editor.extension.ExtensionProvidedHttpRequestEditor;
 import com.gdssecurity.MessageModel.GenericMessage;
@@ -45,7 +45,7 @@ public class BTPHttpRequestEditor implements ExtensionProvidedHttpRequestEditor 
 
     private MontoyaApi _montoya;
     private HttpRequestResponse reqResp;
-    private RawEditor editor;
+    private HttpRequestEditor editor;
     private BlazorHelper blazorHelper;
     private Logging logging;
 
@@ -56,7 +56,7 @@ public class BTPHttpRequestEditor implements ExtensionProvidedHttpRequestEditor 
      */
     public BTPHttpRequestEditor(MontoyaApi api, EditorMode editorMode) {
         this._montoya = api;
-        this.editor = this._montoya.userInterface().createRawEditor();
+        this.editor = this._montoya.userInterface().createHttpRequestEditor();
         this.blazorHelper = new BlazorHelper(this._montoya);
         this.logging = this._montoya.logging();
     }
@@ -70,14 +70,13 @@ public class BTPHttpRequestEditor implements ExtensionProvidedHttpRequestEditor 
     public HttpRequest getRequest() {
         byte[] body;
         if (this.editor.isModified()) {
-            int bodyOffset = this.blazorHelper.getBodyOffset(this.editor.getContents().getBytes());
-            body = ArraySliceHelper.getArraySlice(this.editor.getContents().getBytes(), bodyOffset, this.editor.getContents().length());
+            body = this.editor.getRequest().body().getBytes();
         } else {
             body = this.reqResp.request().body().getBytes();
         }
-        if (body == null | body.length == 0) {
+        if (body == null || body.length == 0) {
             this.logging.logToError("[-] getRequest: The selected editor body is empty/null.");
-            return null;
+            return this.reqResp.request(); // Return original request instead of null
         }
         JSONArray messages;
         byte[] newBody;
@@ -85,13 +84,19 @@ public class BTPHttpRequestEditor implements ExtensionProvidedHttpRequestEditor 
             messages = new JSONArray(new String(body));
             newBody = this.blazorHelper.blazorPack(messages);
         } catch (JSONException e) {
-            this.logging.logToError("[-] getRequest - JSONExcpetion while parsing JSON array: " + e.getMessage());
-            return null;
+            this.logging.logToError("[-] getRequest - JSONException while parsing JSON array: " + e.getMessage());
+            // Return original request with error message in body
+            String errorMsg = "ERROR: Invalid JSON format - " + e.getMessage();
+            return this.reqResp.request().withBody(ByteArray.byteArray(errorMsg.getBytes()));
         } catch (Exception e) {
             this.logging.logToError("[-] getRequest - Unexpected exception while getting the request: " + e.getMessage());
-            return null;
+            String errorMsg = "ERROR: Unexpected error - " + e.getMessage();
+            return this.reqResp.request().withBody(ByteArray.byteArray(errorMsg.getBytes()));
         }
-        return this.reqResp.request().withBody(ByteArray.byteArray(newBody));
+
+        HttpRequest newReq = this.reqResp.request().withBody(ByteArray.byteArray(newBody));
+        newReq = newReq.withUpdatedHeader("Content-Type", "application/octet-stream");
+        return newReq;
     }
 
     /**
@@ -103,6 +108,13 @@ public class BTPHttpRequestEditor implements ExtensionProvidedHttpRequestEditor 
         this.reqResp = requestResponse;
         byte[] body = requestResponse.request().body().getBytes();
         ArrayList<GenericMessage> messages = this.blazorHelper.blazorUnpack(body);
+        if (messages == null) {
+            this.logging.logToError("[-] setRequestResponse - blazorUnpack returned null");
+            String errorMsg = "ERROR: Failed to deserialize Blazor data - blazorUnpack returned null";
+            HttpRequest errorRequest = this.reqResp.request().withBody(ByteArray.byteArray(errorMsg));
+            this.editor.setRequest(errorRequest);
+            return;
+        }
         ByteArrayOutputStream outstream = new ByteArrayOutputStream();
         try {
             String jsonStrMessages = this.blazorHelper.messageArrayToString(messages);
@@ -118,8 +130,10 @@ public class BTPHttpRequestEditor implements ExtensionProvidedHttpRequestEditor 
             return;
         }
         HttpRequest newReq = this.reqResp.request().withBody(ByteArray.byteArray(outstream.toByteArray()));
+        // Updating Content-Type header to application/json to match body content
+        newReq = newReq.withUpdatedHeader("Content-Type", "application/json");
         this.reqResp = HttpRequestResponse.httpRequestResponse(newReq, this.reqResp.response());
-        this.editor.setContents(this.reqResp.request().toByteArray());
+        this.editor.setRequest(newReq);
     }
 
     /**

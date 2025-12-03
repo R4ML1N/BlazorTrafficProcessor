@@ -28,8 +28,8 @@ public final class BTPConstants {
     public static final String CAPTION = "BTP";
     public static final String SEND_TO_BTP_CAPTION = "Send body to BTP tab";
     public static final String SEND_TO_INT_CAPTION = "Send to Intruder";
-    public static final String LOADED_LOG_MSG = "[+] BTP v1.1 Extension loaded.";
-    public static final String UNLOADED_LOG_MSG = "[*] BTP v1.1 Extension unloaded.";
+    public static final String LOADED_LOG_MSG = "[+] BTP v1.2 Extension loaded. Fork by @R4ML1N";
+    public static final String UNLOADED_LOG_MSG = "[*] BTP v1.2 Extension unloaded. Fork by @R4ML1N";
 
     // Patterns and Regexes
     public static final String BLAZOR_URL = "_blazor?id=";

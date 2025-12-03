@@ -116,11 +116,17 @@ public class BlazorHelper {
                 int msgSize = varInt.getInt("result");
                 byte[] messageBytes = ArraySliceHelper.getArraySlice(blob, blobIdx + bytesRead, blobIdx + bytesRead + msgSize);
                 GenericMessage msg = initializeMessage(messageBytes);
-                messages.add(msg);
+                if (msg != null) {
+                    messages.add(msg);
+                } else {
+                    this.logging.logToError("[-] blazorUnpack - initializeMessage returned null for message at offset " + blobIdx);
+                    messages.add(new DisplayErrorMessage("Failed to parse message at offset " + blobIdx, _montoya));
+                }
                 blobIdx += bytesRead + msgSize;
             }
         }catch(Exception e){
             messages.add(new DisplayErrorMessage("Message is incomplete or incompatible", _montoya));
+            logging.logToError("[-] blazorUnpack - An unexpected error occurred while unpacking the blob: " + e.getMessage());
         }
 
         return messages;
@@ -184,7 +190,11 @@ public class BlazorHelper {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < messages.size(); i++) {
             GenericMessage msg = messages.get(i);
-            sb.append(msg.toJsonString());
+            if (msg != null) {
+                sb.append(msg.toJsonString());
+            } else {
+                sb.append("null");
+            }
             if (i != messages.size() - 1) {
                 sb.append(",\r\n");
             }

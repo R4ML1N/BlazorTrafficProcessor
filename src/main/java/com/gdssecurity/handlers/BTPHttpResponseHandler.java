@@ -56,7 +56,8 @@ public class BTPHttpResponseHandler implements ProxyResponseHandler {
     public ProxyResponseReceivedAction handleResponseReceived(InterceptedResponse interceptedResponse) {
         // Highlight
         if (interceptedResponse.statedMimeType() == MimeType.APPLICATION_UNKNOWN && interceptedResponse.body().length() != 0) {
-            interceptedResponse.annotations().setHighlightColor(HighlightColor.CYAN);
+            HighlightColor highlightColor = getHighlightColor();
+            interceptedResponse.annotations().setHighlightColor(highlightColor);
         }
 
         // Handle Blazor Negotiation
@@ -112,5 +113,21 @@ public class BTPHttpResponseHandler implements ProxyResponseHandler {
     @Override
     public ProxyResponseToBeSentAction handleResponseToBeSent(InterceptedResponse interceptedResponse) {
         return ProxyResponseToBeSentAction.continueWith(interceptedResponse);
+    }
+
+    /**
+     * Gets the user-selected highlight color from preferences, defaults to CYAN if not set
+     * @return the HighlightColor to use for highlighting Blazor traffic
+     */
+    private HighlightColor getHighlightColor() {
+        try {
+            String savedColor = this._montoya.persistence().preferences().getString("blazor_highlight_color");
+            if (savedColor != null) {
+                return HighlightColor.valueOf(savedColor);
+            }
+        } catch (IllegalArgumentException e) {
+            this._logging.logToError("[-] Invalid highlight color preference, using default CYAN: " + e.getMessage());
+        }
+        return HighlightColor.CYAN; // Default fallback
     }
 }

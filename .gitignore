@@ -20,7 +20,7 @@ gradle-app.setting
 # Intellij
 .idea
 
-/out/
+/out/*.jar
 gradle-app.setting
 .git
 /releases/*

@@ -21,7 +21,7 @@ import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.logging.Logging;
 import burp.api.montoya.ui.Selection;
-import burp.api.montoya.ui.editor.RawEditor;
+import burp.api.montoya.ui.editor.HttpResponseEditor;
 import burp.api.montoya.ui.editor.extension.EditorMode;
 import burp.api.montoya.ui.editor.extension.ExtensionProvidedHttpResponseEditor;
 import com.gdssecurity.MessageModel.GenericMessage;
@@ -42,7 +42,7 @@ public class BTPHttpResponseEditor implements ExtensionProvidedHttpResponseEdito
     private MontoyaApi _montoya;
     private Logging logging;
     private HttpRequestResponse reqResp;
-    private RawEditor editor;
+    private HttpResponseEditor editor;
     private BlazorHelper blazorHelper;
 
     /**
@@ -53,7 +53,7 @@ public class BTPHttpResponseEditor implements ExtensionProvidedHttpResponseEdito
     public BTPHttpResponseEditor(MontoyaApi api, EditorMode editorMode) {
         this._montoya = api;
         this.logging = this._montoya.logging();
-        this.editor = this._montoya.userInterface().createRawEditor();
+        this.editor = this._montoya.userInterface().createHttpResponseEditor();
         this.blazorHelper = new BlazorHelper(this._montoya);
     }
 
@@ -82,14 +82,19 @@ public class BTPHttpResponseEditor implements ExtensionProvidedHttpResponseEdito
             outstream.write(jsonStrMessages.getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             this.logging.logToError("[-] setRequestResponse - IOException while writing bytes to buffer: " + e.getMessage());
-            this.editor.setContents(ByteArray.byteArray("An error occurred while converting Blazor to JSON."));
+            HttpResponse errorResponse = this.reqResp.response().withBody(ByteArray.byteArray("An error occurred while converting Blazor to JSON."));
+            this.editor.setResponse(errorResponse);
             return;
         } catch (Exception e) {
             this.logging.logToError("[-] setRequestResponse - Unexpected exception occurred: ");
-            this.editor.setContents(ByteArray.byteArray("An error occurred while converting Blazor to JSON."));
+            HttpResponse errorResponse = this.reqResp.response().withBody(ByteArray.byteArray("An error occurred while converting Blazor to JSON."));
+            this.editor.setResponse(errorResponse);
             return;
         }
-        this.editor.setContents(this.reqResp.response().withBody(ByteArray.byteArray(outstream.toByteArray())).toByteArray());
+        HttpResponse newResponse = this.reqResp.response().withBody(ByteArray.byteArray(outstream.toByteArray()));
+        // Updating Content-Type header to application/json to match body content, therefore enabling syntax highlighting
+        newResponse = newResponse.withUpdatedHeader("Content-Type", "application/json");
+        this.editor.setResponse(newResponse);
     }
 
     /**
@@ -99,43 +104,49 @@ public class BTPHttpResponseEditor implements ExtensionProvidedHttpResponseEdito
      */
     @Override
     public boolean isEnabledFor(HttpRequestResponse requestResponse) {
-        if (requestResponse == null || requestResponse.response() == null) {
+        // Check all required objects exist
+        if (requestResponse == null || 
+            requestResponse.response() == null || 
+            requestResponse.request() == null) {
             return false;
         }
 
+        // Check response has valid HTTP version
         if (requestResponse.response().httpVersion() == null) {
             return false;
         }
 
+        // Check scope exists
         if (this._montoya.scope() == null) {
             return false;
         }
 
-        if (requestResponse.response().httpVersion() == null) {
-            return false;
-        }
-
+        // Check if it's a Blazor request or has SignalR header
         if (!requestResponse.request().url().contains(BTPConstants.BLAZOR_URL)) {
             if (!requestResponse.request().hasHeader(BTPConstants.SIGNALR_HEADER)) {
                 return false;
             }
         }
 
+        // Check if in scope
         if (!this._montoya.scope().isInScope(requestResponse.request().url())) {
             return false;
         }
 
+        // Check response body exists and has content
         if (requestResponse.response().body() == null || requestResponse.response().body().length() == 0) {
             return false;
         }
 
-        // Response during negotiation containing "{}\x1e", not valid blazor and BTP tab shouldn't be enabled
-        if ( requestResponse.response().body().length() == 3 && requestResponse.response().body().toString().startsWith("{}")) {
+        // Response during negotiation containing "{}\x1e", not valid blazor
+        if (requestResponse.response().body().length() == 3 && 
+            requestResponse.response().body().toString().startsWith("{}")) {
             return false;
         }
 
-        // Response during negotiation containing "{anything}\x1e", not valid blazor and BTP tab shouldn't be enabled
-        if (requestResponse.response().body().toString().startsWith("{") && requestResponse.response().body().toString().endsWith("}\u001E")) {
+        // Response during negotiation containing "{anything}\x1e", not valid blazor
+        if (requestResponse.response().body().toString().startsWith("{") && 
+            requestResponse.response().body().toString().endsWith("}\u001E")) {
             return false;
         }
 
