@@ -9,7 +9,7 @@ A BurpSuite extension to aid pentesting web applications that use Blazor Server/
 ### Build Steps
 1. Clone the repository.
 2. `cd BlazorTrafficProcessor`
-3. `podman run --rm -v "$PWD/out:/host" burp-ext-build sh -c 'cp /out/*.jar /host/'`
+3. `podman build -t burp-ext-build . && podman run --rm -v "$PWD/out:/host" burp-ext-build sh -c 'cp /out/*.jar /host/'`
 4. The built JAR file will be located at `./out/`
 
 Note: The latest build should be automatically compiled by GitHub workflows (Actions)
